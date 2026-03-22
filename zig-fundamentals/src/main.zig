@@ -11,7 +11,7 @@ pub fn main() !void {
     defer webui.clean(); // Cleanup function
 
     _ = window.show("<html><body><h1>WebUI is working!</h1></body></html>") catch |err| {
-        std.debug.print("Error while showing window {}", .{err});
+        std.debug.print("Error while showing window {{s}", .{err});
     };
     webui.wait(); // Blocks until all windows close
 }
