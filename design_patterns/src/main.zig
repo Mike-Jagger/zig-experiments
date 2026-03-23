@@ -120,7 +120,7 @@ const Button: type = struct {
 };
 
 const Panel: type = struct {
-    modalHelpText: []const u8,
+    modalHelpText: ?[]const u8,
 
     base: Container,
 
@@ -149,7 +149,7 @@ const Panel: type = struct {
 };
 
 const Dialog: type = struct {
-    wikiURL: []const u8,
+    wikiURL: ?[]const u8,
 
     base: Container,
 
