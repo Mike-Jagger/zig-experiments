@@ -8,9 +8,21 @@ pub fn main() !void {
 }
 
 test "Test Chain of Responsibility" {
-    var ok = Button.init(&Component.init(null, "Okay"));
+    const panel = Panel.init(null, null);
+
+    _ = panel.componentWithContextualHelp();
+
+    const dialog = Dialog.init(null, panel);
+
+    _ = dialog.componentWithContextualHelp();
+
+    const ok = Button.init(&Component.init(dialog, "Okay"));
 
     _ = try ok.componentWithContextualHelp();
+
+    const cancel = Button.init(&Component.init(dialog, "Cancel"));
+
+    _ = try cancel.componentWithContextualHelp();
 }
 
 const ComponentWithContextualHelp = struct {
@@ -102,7 +114,7 @@ const Button: type = struct {
         };
     }
 
-    fn componentWithContextualHelp(self: *Button) !ComponentWithContextualHelp {
+    fn componentWithContextualHelp(self: *const Button) !ComponentWithContextualHelp {
         return try self.base.?.*.componentWithContextualHelp();
     }
 };
@@ -123,11 +135,12 @@ const Panel: type = struct {
         self.base.add(child);
     }
 
-    fn componentWithContextualHelp(self: *Panel) !ComponentWithContextualHelp {
-        return switch (self.modalHelpText) {
-            null => try self.base.componentWithContextualHelp(),
-            else => .init(self),
-        };
+    fn componentWithContextualHelp(self: *const Panel) !ComponentWithContextualHelp {
+        if (self.modalHelpText) |_| {
+            return .init(self);
+        } else {
+            return try self.base.componentWithContextualHelp();
+        }
     }
 
     fn showToolTip(self: *const Panel) void {
@@ -147,15 +160,16 @@ const Dialog: type = struct {
         };
     }
 
-    fn add(self: *Panel, child: Component) !void {
+    fn add(self: *Dialog, child: Component) !void {
         self.base.add(child);
     }
 
-    fn componentWithContextualHelp(self: *Panel) !ComponentWithContextualHelp {
-        return switch (self.wikiURL) {
-            null => try self.base.componentWithContextualHelp(),
-            else => .init(self),
-        };
+    fn componentWithContextualHelp(self: *const Dialog) !ComponentWithContextualHelp {
+        if (self.wikiURL) |_| {
+            return .init(self);
+        } else {
+            return try self.base.componentWithContextualHelp();
+        }
     }
 
     fn showToolTip(self: *const Dialog) void {
