@@ -12,7 +12,7 @@ test "Test Chain of Responsibility" {
 
     _ = try panel.componentWithContextualHelp();
 
-    const dialog = Dialog.init(null, panel);
+    const dialog = Dialog.init(null, &panel);
 
     _ = try dialog.componentWithContextualHelp();
 
@@ -85,7 +85,7 @@ const Container = struct {
 
     fn init(children: ?[256]Component) Container {
         return .{
-            ._last = -1,
+            ._last = 0,
             .children = children orelse undefined,
 
             .base = .init(null, null),
@@ -100,7 +100,7 @@ const Container = struct {
         child.container = @This();
     }
 
-    fn componentWithContextualHelp(self: *Container) anyerror!ComponentWithContextualHelp {
+    fn componentWithContextualHelp(self: *const Container) anyerror!ComponentWithContextualHelp {
         return try self.base.componentWithContextualHelp();
     }
 };
@@ -122,12 +122,12 @@ const Button: type = struct {
 const Panel: type = struct {
     modalHelpText: ?[]const u8,
 
-    base: Container,
+    base: ?*const Container,
 
-    fn init(modalHelpText: ?[]const u8, container: ?Container) Panel {
+    fn init(modalHelpText: ?[]const u8, container: ?*const Container) Panel {
         return .{
             .modalHelpText = modalHelpText orelse undefined,
-            .base = container orelse .init(null),
+            .base = container orelse null,
         };
     }
 
@@ -139,24 +139,24 @@ const Panel: type = struct {
         if (self.modalHelpText) |_| {
             return .init(self);
         } else {
-            return try self.base.componentWithContextualHelp();
+            return try self.base.?.*.componentWithContextualHelp();
         }
     }
 
     fn showToolTip(self: *const Panel) void {
-        std.debug.print("Modal help text: {s}", .{self.modalHelpText});
+        std.debug.print("Modal help text: {s}", .{self.modalHelpText.?});
     }
 };
 
 const Dialog: type = struct {
     wikiURL: ?[]const u8,
 
-    base: Container,
+    base: ?*const Container,
 
-    fn init(wikiURL: ?[]const u8, container: ?Container) Panel {
+    fn init(wikiURL: ?[]const u8, container: ?*const Container) Panel {
         return .{
             .wikiURL = wikiURL orelse undefined,
-            .base = container orelse .init(null),
+            .base = container orelse null,
         };
     }
 
@@ -168,11 +168,11 @@ const Dialog: type = struct {
         if (self.wikiURL) |_| {
             return .init(self);
         } else {
-            return try self.base.componentWithContextualHelp();
+            return try self.base.?.*.componentWithContextualHelp();
         }
     }
 
     fn showToolTip(self: *const Dialog) void {
-        std.debug.print("Wikipedia URL: {s}", .{self.wikiURL});
+        std.debug.print("Wikipedia URL: {s}", .{self.wikiURL.?});
     }
 };
