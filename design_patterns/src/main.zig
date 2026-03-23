@@ -10,11 +10,11 @@ pub fn main() !void {
 test "Test Chain of Responsibility" {
     const panel = Panel.init(null, null);
 
-    _ = panel.componentWithContextualHelp();
+    _ = try panel.componentWithContextualHelp();
 
     const dialog = Dialog.init(null, panel);
 
-    _ = dialog.componentWithContextualHelp();
+    _ = try dialog.componentWithContextualHelp();
 
     const ok = Button.init(&Component.init(dialog, "Okay"));
 
@@ -127,7 +127,7 @@ const Panel: type = struct {
     fn init(modalHelpText: ?[]const u8, container: ?Container) Panel {
         return .{
             .modalHelpText = modalHelpText orelse undefined,
-            .base = container orelse .init(),
+            .base = container orelse .init(null),
         };
     }
 
@@ -156,7 +156,7 @@ const Dialog: type = struct {
     fn init(wikiURL: ?[]const u8, container: ?Container) Panel {
         return .{
             .wikiURL = wikiURL orelse undefined,
-            .base = container orelse .init(),
+            .base = container orelse .init(null),
         };
     }
 
