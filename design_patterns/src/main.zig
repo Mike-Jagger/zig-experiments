@@ -8,14 +8,14 @@ pub fn main() !void {
 }
 
 test "Test Chain of Responsibility" {
-    const ok = Button.init(.init());
+    var ok = Button.init(&Component.init(null, "Okay"));
 
-    ok.componentWithContextualHelp.showtoolTip();
+    _ = try ok.componentWithContextualHelp();
 }
 
 const ComponentWithContextualHelp = struct {
-    ptr: *anyopaque,
-    showToolTipFunc: *const fn (self: *anyopaque) anyerror!void,
+    ptr: *const anyopaque,
+    showToolTipFunc: *const fn (self: *const anyopaque) anyerror!void,
 
     const Self = @This();
 
@@ -24,7 +24,7 @@ const ComponentWithContextualHelp = struct {
         const ptr_info = @typeInfo(T);
 
         const gen = struct {
-            pub fn showtoolTip(pointer: *anyopaque) anyerror!void {
+            pub fn showToolTip(pointer: *const anyopaque) anyerror!void {
                 const self: T = @ptrCast(@alignCast(pointer));
                 ptr_info.pointer.child.showToolTip(self);
             }
@@ -36,29 +36,32 @@ const ComponentWithContextualHelp = struct {
         };
     }
 
-    fn showToolTip(self: Self) !void {
+    fn showToolTip(self: *const Self) !void {
         self.showToolTipFunc(self.ptr);
     }
 };
 
 const Component = struct {
     container: ?*Container,
-    tooltipText: ?[]u8,
+    toolTipText: ?[]const u8,
 
-    fn init(container: ?Container, tooltipText: ?[]u8) Component {
+    fn init(container: ?*Container, toolTipText: ?[]const u8) Component {
         return .{
-            .container = container orelse undefined,
-            .tooltipText = tooltipText orelse undefined,
+            .container = container orelse null,
+            .toolTipText = toolTipText orelse null,
         };
     }
 
-    fn componentWithContextualHelp(self: *Component) ComponentWithContextualHelp {
-        return switch (self.tooltipText) {
-            null => .init(self),
-            else => {
-                std.debug.print("Tooltip text: {s}", .{self.tooltipText});
-            },
-        };
+    fn componentWithContextualHelp(self: *const Component) anyerror!ComponentWithContextualHelp {
+        if (self.toolTipText) |_| {
+            return .init(self);
+        } else {
+            return self.container.?.*.componentWithContextualHelp();
+        }
+    }
+
+    fn showToolTip(self: *const Component) void {
+        std.debug.print("Message from component: {s}", .{self.toolTipText.?});
     }
 };
 
@@ -73,7 +76,7 @@ const Container = struct {
             ._last = -1,
             .children = children orelse undefined,
 
-            .base = .init(),
+            .base = .init(null, null),
         };
     }
 
@@ -85,31 +88,31 @@ const Container = struct {
         child.container = @This();
     }
 
-    fn componentWithContextualHelp(self: *Container) ComponentWithContextualHelp {
-        return self.base.componentWithContextualHelp();
+    fn componentWithContextualHelp(self: *Container) anyerror!ComponentWithContextualHelp {
+        return try self.base.componentWithContextualHelp();
     }
 };
 
 const Button: type = struct {
-    base: *Component,
+    base: ?*const Component,
 
-    fn init(component: ?Component) Button {
+    fn init(component: ?*const Component) Button {
         return .{
-            .base = &component orelse &.init(),
+            .base = component orelse unreachable,
         };
     }
 
-    fn componentWithContextualHelp(self: *Button) ComponentWithContextualHelp {
-        return self.base.componentWithContextualHelp();
+    fn componentWithContextualHelp(self: *Button) !ComponentWithContextualHelp {
+        return try self.base.?.*.componentWithContextualHelp();
     }
 };
 
 const Panel: type = struct {
-    modalHelpText: []u8,
+    modalHelpText: []const u8,
 
     base: Container,
 
-    fn init(modalHelpText: ?[]u8, container: ?Container) Panel {
+    fn init(modalHelpText: ?[]const u8, container: ?Container) Panel {
         return .{
             .modalHelpText = modalHelpText orelse undefined,
             .base = container orelse .init(),
@@ -120,20 +123,24 @@ const Panel: type = struct {
         self.base.add(child);
     }
 
-    fn componentWithContextualHelp(self: *Panel) ComponentWithContextualHelp {
+    fn componentWithContextualHelp(self: *Panel) !ComponentWithContextualHelp {
         return switch (self.modalHelpText) {
-            null => self.base.componentWithContextualHelp(),
-            else => std.debug.print("Modal help text: {s}", .{self.modalHelpText}),
+            null => try self.base.componentWithContextualHelp(),
+            else => .init(self),
         };
+    }
+
+    fn showToolTip(self: *const Panel) void {
+        std.debug.print("Modal help text: {s}", .{self.modalHelpText});
     }
 };
 
 const Dialog: type = struct {
-    wikiURL: []u8,
+    wikiURL: []const u8,
 
     base: Container,
 
-    fn init(wikiURL: ?[]u8, container: ?Container) Panel {
+    fn init(wikiURL: ?[]const u8, container: ?Container) Panel {
         return .{
             .wikiURL = wikiURL orelse undefined,
             .base = container orelse .init(),
@@ -144,10 +151,14 @@ const Dialog: type = struct {
         self.base.add(child);
     }
 
-    fn componentWithContextualHelp(self: *Panel) ComponentWithContextualHelp {
+    fn componentWithContextualHelp(self: *Panel) !ComponentWithContextualHelp {
         return switch (self.wikiURL) {
-            null => self.base.componentWithContextualHelp(),
-            else => std.debug.print("Wikipedia URL: {s}", .{self.wikiURL}),
+            null => try self.base.componentWithContextualHelp(),
+            else => .init(self),
         };
+    }
+
+    fn showToolTip(self: *const Dialog) void {
+        std.debug.print("Wikipedia URL: {s}", .{self.wikiURL});
     }
 };
