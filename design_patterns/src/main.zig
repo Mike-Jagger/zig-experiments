@@ -12,15 +12,19 @@ test "Test Chain of Responsibility" {
 
     _ = try panel.componentWithContextualHelp();
 
-    const dialog = Dialog.init(null, &panel);
+    const dialog = Dialog.init(null, panel.base);
 
     _ = try dialog.componentWithContextualHelp();
 
-    const ok = Button.init(&Component.init(dialog, "Okay"));
+    const comp1 = Component.init(dialog.base, "Okay");
+
+    const ok = Button.init(&comp1);
 
     _ = try ok.componentWithContextualHelp();
 
-    const cancel = Button.init(&Component.init(dialog, "Cancel"));
+    const comp2 = Component.init(dialog.base, "Okay");
+
+    const cancel = Button.init(&comp2);
 
     _ = try cancel.componentWithContextualHelp();
 }
@@ -54,10 +58,10 @@ const ComponentWithContextualHelp = struct {
 };
 
 const Component = struct {
-    container: ?*Container,
+    container: ?*const Container,
     toolTipText: ?[]const u8,
 
-    fn init(container: ?*Container, toolTipText: ?[]const u8) Component {
+    fn init(container: ?*const Container, toolTipText: ?[]const u8) Component {
         return .{
             .container = container orelse null,
             .toolTipText = toolTipText orelse null,
@@ -153,7 +157,7 @@ const Dialog: type = struct {
 
     base: ?*const Container,
 
-    fn init(wikiURL: ?[]const u8, container: ?*const Container) Panel {
+    fn init(wikiURL: ?[]const u8, container: ?*const Container) Dialog {
         return .{
             .wikiURL = wikiURL orelse undefined,
             .base = container orelse null,
